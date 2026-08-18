@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0e14; font-family: system-ui, -apple-system, sans-serif; color: #e0e0e0; }
+
+/* Navigation */
+.nav { background: #141b24; border-bottom: 1px solid #2a3a4a; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; }
+.nav-brand { font-size: 18px; font-weight: 700; color: #4fc3f7; display: flex; align-items: center; gap: 10px; }
+.nav-brand svg { width: 24px; height: 24px; }
+.nav-tabs { display: flex; gap: 4px; }
+
+/* CSS-only tab navigation */
+input[name="tab"] { display: none; }
+.tab-label { padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; color: #6b8299; cursor: pointer; transition: all 0.2s; }
+.tab-label:hover { color: #fff; background: #1e2d3d; }
+#tab-stream:checked ~ .main .page-stream,
+#tab-telemetry:checked ~ .main .page-telemetry,
+#tab-models:checked ~ .main .page-models { display: block; }
+#tab-stream:checked ~ .nav .tab-label[for="tab-stream"],
+#tab-telemetry:checked ~ .nav .tab-label[for="tab-telemetry"],
+#tab-models:checked ~ .nav .tab-label[for="tab-models"] { color: #4fc3f7; background: #0d3b5e; }
+.page { display: none; padding: 24px; }
+
+/* Status indicator */
+.status { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #81c784; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: #81c784; }
+
+/* Video Player */
+.video-container { background: #000; border-radius: 12px; overflow: hidden; position: relative; margin-bottom: 20px; border: 1px solid #2a3a4a; }
+.video-screen { width: 100%; aspect-ratio: 16/9; background: linear-gradient(135deg, #0a1628 0%, #1a2744 50%, #0a1628 100%); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+.video-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; }
+.video-grid { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: 
+  linear-gradient(rgba(79,195,247,0.03) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(79,195,247,0.03) 1px, transparent 1px);
+  background-size: 40px 40px; }
+.detection-box { position: absolute; border: 2px solid #4fc3f7; border-radius: 4px; }
+.detection-box.vehicle { top: 35%; left: 15%; width: 18%; height: 30%; border-color: #81c784; }
+.detection-box.person1 { top: 25%; left: 55%; width: 8%; height: 40%; border-color: #ffb74d; }
+.detection-box.person2 { top: 30%; left: 72%; width: 7%; height: 35%; border-color: #ffb74d; }
+.detection-box.vehicle2 { top: 40%; left: 38%; width: 15%; height: 25%; border-color: #81c784; }
+.det-label { position: absolute; top: -20px; left: 0; font-size: 10px; padding: 2px 6px; border-radius: 3px; font-weight: 600; white-space: nowrap; }
+.vehicle .det-label { background: #1b4332; color: #81c784; }
+.person1 .det-label, .person2 .det-label { background: #4a2c00; color: #ffb74d; }
+.vehicle2 .det-label { background: #1b4332; color: #81c784; }
+
+/* Video Controls */
+.video-controls { background: #141b24; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; }
+.controls-left { display: flex; align-items: center; gap: 12px; }
+.btn { padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; }
+.btn-primary { background: #4fc3f7; color: #0a0e14; }
+.btn-primary:hover { background: #81d4fa; }
+.btn-secondary { background: #1e2d3d; color: #aab; border: 1px solid #2a3a4a; }
+.btn-secondary:hover { background: #2a3a4a; color: #fff; }
+.stream-info { font-size: 11px; color: #6b8299; }
+
+/* Camera selector */
+.camera-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.camera-card { background: #1a2733; border: 1px solid #2a3a4a; border-radius: 10px; padding: 14px; cursor: pointer; transition: all 0.15s; }
+.camera-card:hover { border-color: #4fc3f7; }
+.camera-card.active { border-color: #4fc3f7; background: #0d3b5e22; }
+.camera-name { font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 4px; }
+.camera-status { font-size: 11px; color: #81c784; display: flex; align-items: center; gap: 4px; }
+.camera-status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #81c784; }
+
+/* Telemetry Dashboard */
+.telemetry-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.metric-card { background: #1a2733; border: 1px solid #2a3a4a; border-radius: 12px; padding: 20px; }
+.metric-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.metric-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #6b8299; }
+.metric-badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; }
+.metric-badge.good { background: #1b4332; color: #81c784; }
+.metric-badge.warn { background: #4a2c00; color: #ffb74d; }
+.metric-value { font-size: 36px; font-weight: 700; font-family: 'SF Mono', 'Fira Code', monospace; margin-bottom: 8px; }
+.metric-value.fps { color: #4fc3f7; }
+.metric-value.gpu { color: #ce93d8; }
+.metric-value.mem { color: #81c784; }
+.metric-value.decoder { color: #ffb74d; }
+.metric-value.latency { color: #ef5350; }
+.metric-value.streams { color: #4db6ac; }
+.metric-sub { font-size: 12px; color: #6b8299; }
+
+/* Bar graph in metric card */
+.metric-bar-container { margin-top: 12px; }
+.metric-bar-bg { height: 8px; background: #0a1628; border-radius: 4px; overflow: hidden; }
+.metric-bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+.metric-bar-fill.fps-bar { background: linear-gradient(90deg, #4fc3f7, #0288d1); width: 80%; }
+.metric-bar-fill.gpu-bar { background: linear-gradient(90deg, #ce93d8, #7b1fa2); width: 72%; }
+.metric-bar-fill.mem-bar { background: linear-gradient(90deg, #81c784, #388e3c); width: 58%; }
+.metric-bar-fill.decoder-bar { background: linear-gradient(90deg, #ffb74d, #f57c00); width: 85%; }
+.metric-bar-fill.latency-bar { background: linear-gradient(90deg, #ef5350, #c62828); width: 35%; }
+.metric-bar-fill.streams-bar { background: linear-gradient(90deg, #4db6ac, #00695c); width: 50%; }
+
+/* Sparkline (CSS) */
+.sparkline { display: flex; align-items: flex-end; gap: 2px; height: 40px; margin-top: 12px; }
+.spark-bar { flex: 1; background: #4fc3f7; border-radius: 2px 2px 0 0; opacity: 0.6; }
+
+/* Model Swap Section */
+.model-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.model-card { background: #1a2733; border: 1px solid #2a3a4a; border-radius: 12px; padding: 20px; position: relative; transition: all 0.15s; }
+.model-card:hover { border-color: #4fc3f7; }
+.model-card.active-model { border-color: #81c784; background: #1b433222; }
+.model-name { font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+.model-desc { font-size: 12px; color: #6b8299; margin-bottom: 12px; line-height: 1.5; }
+.model-stats { display: flex; gap: 16px; margin-bottom: 14px; }
+.model-stat { text-align: center; }
+.model-stat-value { font-size: 16px; font-weight: 700; font-family: monospace; color: #4fc3f7; }
+.model-stat-label { font-size: 10px; color: #6b8299; text-transform: uppercase; }
+.model-active-badge { position: absolute; top: 12px; right: 12px; font-size: 10px; padding: 3px 10px; border-radius: 10px; background: #1b4332; color: #81c784; font-weight: 600; }
+
+/* Section title */
+.section-title { font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+/* Log panel */
+.log-panel { background: #0a1628; border: 1px solid #2a3a4a; border-radius: 10px; padding: 16px; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; max-height: 200px; overflow-y: auto; }
+.log-entry { padding: 4px 0; border-bottom: 1px solid #1a2733; display: flex; gap: 12px; }
+.log-time { color: #6b8299; flex-shrink: 0; }
+.log-msg { color: #81c784; }
+.log-msg.warn { color: #ffb74d; }
+.log-msg.info { color: #4fc3f7; }
+
+/* Animations */
+.fade-in { opacity: 1; }
+@media (prefers-reduced-motion: no-preference) {
+  .fade-in { animation: fadeIn 0.5s ease-out both; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  .detection-box { animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+  .status-dot { animation: blink 1.5s ease-in-out infinite; }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+}
+</style>
+</head>
+<body>
+
+<!-- Tab inputs (CSS-only navigation) -->
+<input type="radio" name="tab" id="tab-stream" checked>
+<input type="radio" name="tab" id="tab-telemetry">
+<input type="radio" name="tab" id="tab-models">
+
+<!-- Navigation -->
+<div class="nav">
+  <div class="nav-brand">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#4fc3f7" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+    VisionEdge Dashboard
+  </div>
+  <div class="nav-tabs">
+    <label class="tab-label" for="tab-stream">Live Stream</label>
+    <label class="tab-label" for="tab-telemetry">Telemetry</label>
+    <label class="tab-label" for="tab-models">Model Swap</label>
+  </div>
+  <div class="status">
+    <div class="status-dot"></div>
+    Pipeline Active
+  </div>
+</div>
+
+<!-- Main Content -->
+<div class="main">
+
+<!-- PAGE 1: Live Stream -->
+<div class="page page-stream fade-in">
+  <div class="section-title">📹 Camera Feeds</div>
+  <div class="camera-grid">
+    <div class="camera-card active">
+      <div class="camera-name">Camera 1 — Main Entrance</div>
+      <div class="camera-status">Streaming • 1920×1080 @ 30fps</div>
+    </div>
+    <div class="camera-card">
+      <div class="camera-name">Camera 2 — Parking Lot</div>
+      <div class="camera-status">Streaming • 1920×1080 @ 30fps</div>
+    </div>
+    <div class="camera-card">
+      <div class="camera-name">Camera 3 — Highway Feed</div>
+      <div class="camera-status">Streaming • 1280×720 @ 25fps</div>
+    </div>
+    <div class="camera-card">
+      <div class="camera-name">Camera 4 — Intersection</div>
+      <div class="camera-status">Streaming • 1920×1080 @ 30fps</div>
+    </div>
+  </div>
+
+  <div class="section-title">🎬 Live Processed Stream — Camera 1</div>
+  <div class="video-container">
+    <div class="video-screen">
+      <div class="video-grid"></div>
+      <div class="video-overlay">
+        <!-- Simulated detection boxes -->
+        <div class="detection-box vehicle"><div class="det-label">Vehicle 94%</div></div>
+        <div class="detection-box person1"><div class="det-label">Person 89%</div></div>
+        <div class="detection-box person2"><div class="det-label">Person 91%</div></div>
+        <div class="detection-box vehicle2"><div class="det-label">Vehicle 97%</div></div>
+      </div>
+    </div>
+    <div class="video-controls">
+      <div class="controls-left">
+        <button class="btn btn-primary">⏸ Pause</button>
+        <button class="btn btn-secondary">📷 Snapshot</button>
+        <button class="btn btn-secondary">⛶ Fullscreen</button>
+      </div>
+      <div class="stream-info">WebRTC • 1080p • 28ms latency • 4 detections</div>
+    </div>
+  </div>
+
+  <!-- Detection Log -->
+  <div class="section-title">📋 Detection Log</div>
+  <div class="log-panel">
+    <div class="log-entry"><span class="log-time">05:41:02</span><span class="log-msg info">[DETECT] Vehicle detected at (152, 340) — confidence: 97%</span></div>
+    <div class="log-entry"><span class="log-time">05:41:02</span><span class="log-msg info">[DETECT] Person detected at (558, 245) — confidence: 89%</span></div>
+    <div class="log-entry"><span class="log-time">05:41:01</span><span class="log-msg">[STREAM] Frame #18432 processed — 4 objects detected</span></div>
+    <div class="log-entry"><span class="log-time">05:41:01</span><span class="log-msg info">[DETECT] Vehicle detected at (148, 335) — confidence: 94%</span></div>
+    <div class="log-entry"><span class="log-time">05:41:00</span><span class="log-msg warn">[PERF] GPU memory spike: 4.2GB → 4.8GB (transient)</span></div>
+    <div class="log-entry"><span class="log-time">05:40:59</span><span class="log-msg">[STREAM] WebRTC connection stable — 28ms RTT</span></div>
+    <div class="log-entry"><span class="log-time">05:40:58</span><span class="log-msg info">[DETECT] Person detected at (720, 298) — confidence: 91%</span></div>
+    <div class="log-entry"><span class="log-time">05:40:57</span><span class="log-msg">[PIPELINE] Zero-copy transfer: decode → inference — 0.3ms</span></div>
+  </div>
+</div>
+
+<!-- PAGE 2: Telemetry -->
+<div class="page page-telemetry fade-in">
+  <div class="section-title">📊 Live Telemetry Dashboard</div>
+  
+  <div class="telemetry-grid">
+    <div class="metric-card">
+      <div class="metric-header">
+        <div class="metric-label">Frames Per Second</div>
+        <div class="metric-badge good">Optimal</div>
+      </div>
+      <div class="metric-value fps">24.3</div>
+      <div class="metric-sub">Target: 30 FPS • Min: 18 FPS</div>
+      <div class="metric-bar-container">
+        <div class="metric-bar-bg"><div class="metric-bar-fill fps-bar"></div></div>
+      </div>
+      <div class="sparkline">
+        <div class="spark-bar" style="height:70%"></div>
+        <div class="spark-bar" style="height:75%"></div>
+        <div class="spark-bar" style="height:80%"></div>
+        <div class="spark-bar" style="height:72%"></div>
+        <div class="spark-bar" style="height:85%"></div>
+        <div class="spark-bar" style="height:78%"></div>
+        <div class="spark-bar" style="height:82%"></div>
+        <div class="spark-bar" style="height:90%"></div>
+        <div class="spark-bar" style="height:88%"></div>
+        <div class="spark-bar" style="height:80%"></div>
+        <div class="spark-bar" style="height:76%"></div>
+        <div class="spark-bar" style="height:82%"></div>
+        <div class="spark-bar" style="height:79%"></div>
+        <div class="spark-bar" style="height:84%"></div>
+        <div class="spark-bar" style="height:81%"></div>
+      </div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-header">
+        <div class="metric-label">GPU Utilization</div>
+        <div class="metric-badge good">Normal</div>
+      </div>
+      <div class="metric-value gpu">72%</div>
+      <div class="metric-sub">NVIDIA GPU • TensorRT Engine Active</div>
+      <div class="metric-bar-container">
+        <div class="metric-bar-bg"><div class="metric-bar-fill gpu-bar"></div></div>
+      </div>
+      <div class="sparkline">
+        <div class="spark-bar" style="height:65%;background:#ce93d8"></div>
+        <div class="spark-bar" style="height:70%;background:#ce93d8"></div>
+        <div class="spark-bar" style="height:68%;background:#ce93d8"></div>
+        <div class="spark-bar" style="height:72%;background:#ce93d8"></div>
+        <div class="spark-bar" style="height:75%;background:#ce93d8"></div>
+        <div class="spark-bar" style="height:71%;background:#ce93d8"></div>
+        <div class="spark-bar" style="height:69%;background:#ce93d8"></div>
+        <div class="spark-bar" style="height:73%;background:#ce93d8"></div>
+        <div class="spark-bar" style="height:76%;background:#ce93d8"></div>
+        <div class="spark-bar" style="height:72%;background:#ce93d8"></div>
+        <div class="spark-bar" style="height:70%;background:#ce93d8"></div>
+        <div class="spark-bar" style="height:74%;background:#ce93d8"></div>
+        <div class="spark-bar" style="height:72%;background:#ce93d8"></div>
+        <div class="spark-bar" style="height:71%;background:#ce93d8"></div>
+        <div class="spark-bar" style="height:73%;background:#ce93d8"></div>
+      </div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-header">
+        <div class="metric-label">GPU Memory</div>
+        <div class="metric-badge good">Healthy</div>
+      </div>
+      <div class="metric-value mem">4.6 GB</div>
+      <div class="metric-sub">Total: 8 GB • Available: 3.4 GB</div>
+      <div class="metric-bar-container">
+        <div class="metric-bar-bg"><div class="metric-bar-fill mem-bar"></div></div>
+      </div>
+      <div class="sparkline">
+        <div class="spark-bar" style="height:55%;background:#81c784"></div>
+        <div class="spark-bar" style="height:56%;background:#81c784"></div>
+        <div class="spark-bar" style="height:58%;background:#81c784"></div>
+        <div class="spark-bar" style="height:57%;background:#81c784"></div>
+        <div class="spark-bar" style="height:60%;background:#81c784"></div>
+        <div class="spark-bar" style="height:58%;background:#81c784"></div>
+        <div class="spark-bar" style="height:56%;background:#81c784"></div>
+        <div class="spark-bar" style="height:57%;background:#81c784"></div>
+        <div class="spark-bar" style="height:59%;background:#81c784"></div>
+        <div class="spark-bar" style="height:58%;background:#81c784"></div>
+        <div class="spark-bar" style="height:57%;background:#81c784"></div>
+        <div class="spark-bar" style="height:58%;background:#81c784"></div>
+        <div class="spark-bar" style="height:56%;background:#81c784"></div>
+        <div class="spark-bar" style="height:58%;background:#81c784"></div>
+        <div class="spark-bar" style="height:57%;background:#81c784"></div>
+      </div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-header">
+        <div class="metric-label">Decoder Utilization</div>
+        <div class="metric-badge warn">High</div>
+      </div>
+      <div class="metric-value decoder">85%</div>
+      <div class="metric-sub">NVDEC Hardware Decoder • 4 streams</div>
+      <div class="metric-bar-container">
+        <div class="metric-bar-bg"><div class="metric-bar-fill decoder-bar"></div></div>
+      </div>
+      <div class="sparkline">
+        <div class="spark-bar" style="height:80%;background:#ffb74d"></div>
+        <div class="spark-bar" style="height:82%;background:#ffb74d"></div>
+        <div class="spark-bar" style="height:85%;background:#ffb74d"></div>
+        <div class="spark-bar" style="height:83%;background:#ffb74d"></div>
+        <div class="spark-bar" style="height:86%;background:#ffb74d"></div>
+        <div class="spark-bar" style="height:84%;background:#ffb74d"></div>
+        <div class="spark-bar" style="height:85%;background:#ffb74d"></div>
+        <div class="spark-bar" style="height:87%;background:#ffb74d"></div>
+        <div class="spark-bar" style="height:85%;background:#ffb74d"></div>
+        <div class="spark-bar" style="height:84%;background:#ffb74d"></div>
+        <div class="spark-bar" style="height:86%;background:#ffb74d"></div>
+        <div class="spark-bar" style="height:85%;background:#ffb74d"></div>
+        <div class="spark-bar" style="height:83%;background:#ffb74d"></div>
+        <div class="spark-bar" style="height:85%;background:#ffb74d"></div>
+        <div class="spark-bar" style="height:84%;background:#ffb74d"></div>
+      </div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-header">
+        <div class="metric-label">Stream Latency</div>
+        <div class="metric-badge good">Low</div>
+      </div>
+      <div class="metric-value latency">28 ms</div>
+      <div class="metric-sub">WebRTC Round-Trip • Target: &lt;50ms</div>
+      <div class="metric-bar-container">
+        <div class="metric-bar-bg"><div class="metric-bar-fill latency-bar"></div></div>
+      </div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-header">
+        <div class="metric-label">Active Streams</div>
+        <div class="metric-badge good">Stable</div>
+      </div>
+      <div class="metric-value streams">4 / 8</div>
+      <div class="metric-sub">Max Capacity: 8 concurrent streams</div>
+      <div class="metric-bar-container">
+        <div class="metric-bar-bg"><div class="metric-bar-fill streams-bar"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pipeline Status -->
+  <div class="section-title">🔄 Pipeline Status</div>
+  <div class="log-panel">
+    <div class="log-entry"><span class="log-time">05:41:03</span><span class="log-msg">[FPS] Current: 24.3 | Avg(1min): 23.8 | Peak: 29.1</span></div>
+    <div class="log-entry"><span class="log-time">05:41:02</span><span class="log-msg info">[GPU] Utilization: 72% | Temp: 68°C | Power: 145W</span></div>
+    <div class="log-entry"><span class="log-time">05:41:01</span><span class="log-msg">[MEM] GPU: 4.6/8.0 GB | Zero-copy active | No leaks detected</span></div>
+    <div class="log-entry"><span class="log-time">05:41:00</span><span class="log-msg info">[NVDEC] Decoder load: 85% | 4 active decode sessions</span></div>
+    <div class="log-entry"><span class="log-time">05:40:59</span><span class="log-msg">[TRTRT] Inference time: 8.2ms/frame | Batch: 1</span></div>
+    <div class="log-entry"><span class="log-time">05:40:58</span><span class="log-msg warn">[WARN] Decoder approaching capacity — consider reducing stream count</span></div>
+  </div>
+</div>
+
+<!-- PAGE 3: Model Swap -->
+<div class="page page-models fade-in">
+  <div class="section-title">🔄 AI Model Swap — Hot-Swap Models On The Fly</div>
+  
+  <div class="model-grid">
+    <div class="model-card active-model">
+      <div class="model-active-badge">● Active</div>
+      <div class="model-name">YOLOv8n (Nano)</div>
+      <div class="model-desc">Lightweight model optimized for speed. Best for real-time multi-stream scenarios with limited GPU resources.</div>
+      <div class="model-stats">
+        <div class="model-stat">
+          <div class="model-stat-value">6.3M</div>
+          <div class="model-stat-label">Parameters</div>
+        </div>
+        <div class="model-stat">
+          <div class="model-stat-value">8.2ms</div>
+          <div class="model-stat-label">Inference</div>
+        </div>
+        <div class="model-stat">
+          <div class="model-stat-value">37.3</div>
+          <div class="model-stat-label">mAP50</div>
+        </div>
+      </div>
+      <button class="btn btn-secondary" style="width:100%">Currently Running</button>
+    </div>
+
+    <div class="model-card">
+      <div class="model-name">YOLOv8s (Small)</div>
+      <div class="model-desc">Balanced model with improved accuracy. Good trade-off between speed and detection quality.</div>
+      <div class="model-stats">
+        <div class="model-stat">
+          <div class="model-stat-value">11.2M</div>
+          <div class="model-stat-label">Parameters</div>
+        </div>
+        <div class="model-stat">
+          <div class="model-stat-value">14.5ms</div>
+          <div class="model-stat-label">Inference</div>
+        </div>
+        <div class="model-stat">
+          <div class="model-stat-value">44.9</div>
+          <div class="model-stat-label">mAP50</div>
+        </div>
+      </div>
+      <button class="btn btn-primary" style="width:100%">⚡ Swap to This Model</button>
+    </div>
+
+    <div class="model-card">
+      <div class="model-name">YOLOv8m (Medium)</div>
+      <div class="model-desc">Higher accuracy model for scenarios where precision matters more than frame rate.</div>
+      <div class="model-stats">
+        <div class="model-stat">
+          <div class="model-stat-value">25.9M</div>
+          <div class="model-stat-label">Parameters</div>
+        </div>
+        <div class="model-stat">
+          <div class="model-stat-value">22.1ms</div>
+          <div class="model-stat-label">Inference</div>
+        </div>
+        <div class="model-stat">
+          <div class="model-stat-value">50.2</div>
+          <div class="model-stat-label">mAP50</div>
+        </div>
+      </div>
+      <button class="btn btn-primary" style="width:100%">⚡ Swap to This Model</button>
+    </div>
+
+    <div class="model-card">
+      <div class="model-name">YOLOv8l (Large)</div>
+      <div class="model-desc">High-accuracy model for single-stream scenarios requiring maximum detection precision.</div>
+      <div class="model-stats">
+        <div class="model-stat">
+          <div class="model-stat-value">43.7M</div>
+          <div class="model-stat-label">Parameters</div>
+        </div>
+        <div class="model-stat">
+          <div class="model-stat-value">35.4ms</div>
+          <div class="model-stat-label">Inference</div>
+        </div>
+        <div class="model-stat">
+          <div class="model-stat-value">52.9</div>
+          <div class="model-stat-label">mAP50</div>
+        </div>
+      </div>
+      <button class="btn btn-primary" style="width:100%">⚡ Swap to This Model</button>
+    </div>
+  </div>
+
+  <!-- Model Swap Log -->
+  <div class="section-title">📋 Model Swap History</div>
+  <div class="log-panel">
+    <div class="log-entry"><span class="log-time">05:38:12</span><span class="log-msg">[SWAP] Loaded YOLOv8n TensorRT engine — warm-up complete (2.1s)</span></div>
+    <div class="log-entry"><span class="log-time">05:38:10</span><span class="log-msg info">[ENGINE] Compiling ONNX → TensorRT for YOLOv8n...</span></div>
+    <div class="log-entry"><span class="log-time">05:35:44</span><span class="log-msg warn">[SWAP] Unloading YOLOv8s — freeing 890MB GPU memory</span></div>
+    <div class="log-entry"><span class="log-time">05:35:44</span><span class="log-msg">[SWAP] Model swap initiated: YOLOv8s → YOLOv8n</span></div>
+    <div class="log-entry"><span class="log-time">05:20:00</span><span class="log-msg">[INIT] Pipeline started with YOLOv8s (default)</span></div>
+  </div>
+</div>
+
+</div><!-- end .main -->
+
+</body>
+</html>
