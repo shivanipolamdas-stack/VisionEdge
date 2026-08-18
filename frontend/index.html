@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VisionEdge - AI Video Analytics</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background: #111827;
+            color: white;
+        }
+
+        header {
+            background: #1f2937;
+            padding: 25px;
+        }
+
+        .container {
+            padding: 30px;
+        }
+
+        .cards {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .card {
+            background: #1f2937;
+            padding: 20px;
+            border-radius: 10px;
+            min-width: 180px;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        #status {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h1>VisionEdge</h1>
+    <p>AI-Powered Edge Vision Analytics</p>
+</header>
+
+<div class="container">
+
+    <h2>System Telemetry</h2>
+
+    <div class="cards">
+
+        <div class="card">
+            <h3>CPU Usage</h3>
+            <p id="cpu">Loading...</p>
+        </div>
+
+        <div class="card">
+            <h3>Memory Usage</h3>
+            <p id="memory">Loading...</p>
+        </div>
+
+        <div class="card">
+            <h3>Available Memory</h3>
+            <p id="available">Loading...</p>
+        </div>
+
+        <div class="card">
+            <h3>Stream Status</h3>
+            <p id="stream">Loading...</p>
+        </div>
+
+    </div>
+
+    <p id="status">Connecting to backend...</p>
+
+</div>
+
+<script>
+
+async function loadTelemetry() {
+
+    try {
+
+        const response =
+            await fetch("http://127.0.0.1:8000/telemetry");
+
+        const data = await response.json();
+
+        document.getElementById("cpu").textContent =
+            data.cpu_usage + "%";
+
+        document.getElementById("memory").textContent =
+            data.memory_usage + "%";
+
+        document.getElementById("available").textContent =
+            data.memory_available_gb + " GB";
+
+        document.getElementById("stream").textContent =
+            data.stream_status;
+
+        document.getElementById("status").textContent =
+            "Backend connected successfully.";
+
+    } catch (error) {
+
+        document.getElementById("status").textContent =
+            "Backend connection failed.";
+
+    }
+}
+
+loadTelemetry();
+
+</script>
+
+</body>
+</html>
