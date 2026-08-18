@@ -1,0 +1,8 @@
+{
+    "project": "VisionEdge",
+    "model_name": "YOLO",
+    "task": "object_detection",
+    "confidence_threshold": 0.5,
+    "device": "cpu",
+    "status": "ready"
+}
